@@ -1,19 +1,23 @@
 #include <IRremote.h> // Biblioteca IRremote
 
-
+// Defina o pino do emissor IR
 const int IR_SEND_PIN = 3;
 
-const int BOTAO_LIGA_DESLIGA_PIN = 7; 
-const int BOTAO_VOLUME_MAIS_PIN = 5;
-const int BOTAO_VOLUME_MENOS_PIN = 6;
+// Defina os pinos dos botões
+const int BOTAO_LIGA_DESLIGA_PIN = 7;
+const int BOTAO_VOLUME_MAIS_PIN = 5; 
+const int BOTAO_VOLUME_MENOS_PIN = 6; 
 
-// Códigos IR específicos
-#define CODIGO_LIGA_DESLIGA  0x20DF10EF
-#define CODIGO_DIGITO_1      0x20DF8877
-#define CODIGO_DIGITO_2      0x20DF48B7
-#define CODIGO_VOLUME_MAIS   0x20DF40BF
-#define CODIGO_VOLUME_MENOS  0x20DFC03F
 
+#define CODIGO_LIGA_DESLIGA  0x20DF10EF 
+
+#define CODIGO_SETA_BAIXO    0x20DF827D 
+#define CODIGO_OK_SELECIONAR 0x20DF22DD 
+#define CODIGO_CANAL_MAIS    0x20DF00FF 
+
+// Códigos de Volume (UNIVERSAL)
+#define CODIGO_VOLUME_MAIS_BTN   0x20DF40BF
+#define CODIGO_VOLUME_MENOS_BTN  0x20DFC03F
 
 // Variáveis para debounce dos botões
 unsigned long ultimoTempoBotaoLigaDesliga = 0;
@@ -21,23 +25,22 @@ unsigned long ultimoTempoBotaoVolumeMais = 0;
 unsigned long ultimoTempoBotaoVolumeMenos = 0;
 unsigned long debounceDelay = 50; // Tempo de debounce em milissegundos
 
-// Delays para a sequência de ligar e mudar de canal
-const int DELAY_APOS_LIGAR = 5000;    // Tempo para a TV ligar (em ms)
-const int DELAY_ENTRE_DIGITOS = 500; // Tempo entre enviar '1' e '2' (em ms)
+// Delays
+const int DELAY_APOS_LIGAR = 5000;        // Tempo para a TV ligar (em ms) - ajuste se necessário
+const int DELAY_ENTRE_ACOES_MENU = 5000;   // Tempo entre os comandos de navegação no menu (ajuste se necessário)
 
 void setup() {
   Serial.begin(9600);
 
-  // Inicializa o emissor IR usando o método do seu código simples
-  IrSender.begin(IR_SEND_PIN); // <--- ADICIONADO E AJUSTADO
-  // Se IR_SEND_PIN for o mesmo que irPin (pino 3), está correto.
+  // Inicializa o emissor IR
+  IrSender.begin(IR_SEND_PIN);
 
   // Configura os pinos dos botões como entrada com pull-up interno
   pinMode(BOTAO_LIGA_DESLIGA_PIN, INPUT_PULLUP);
   pinMode(BOTAO_VOLUME_MAIS_PIN, INPUT_PULLUP);
   pinMode(BOTAO_VOLUME_MENOS_PIN, INPUT_PULLUP);
 
-  Serial.println("Controle Remoto LG (Canal 12) Iniciado - v2");
+  Serial.println("Controle Remoto LG (Navegação Menu - Seus Códigos) Iniciado - v4");
 }
 
 void loop() {
@@ -45,26 +48,34 @@ void loop() {
   if (digitalRead(BOTAO_LIGA_DESLIGA_PIN) == LOW) {
     if ((millis() - ultimoTempoBotaoLigaDesliga) > debounceDelay) {
       Serial.println("Botão Liga/Desliga Pressionado - Iniciando sequência...");
-
-      Serial.println("Enviando código Liga/Desliga...");
-      // Usa IrSender.sendNEC como no seu código simples
-      IrSender.sendNEC(CODIGO_LIGA_DESLIGA, 32); // <--- AJUSTADO
       ultimoTempoBotaoLigaDesliga = millis();
 
+      // 1. Envia o código de Liga/Desliga
+      Serial.println("Enviando código Liga/Desliga...");
+      IrSender.sendNEC(CODIGO_LIGA_DESLIGA, 32);
+
+      // 2. Espera a TV ligar
       Serial.print("Aguardando TV ligar (");
       Serial.print(DELAY_APOS_LIGAR / 1000);
       Serial.println("s)...");
       delay(DELAY_APOS_LIGAR);
 
-      Serial.println("Enviando código para dígito 1...");
-      IrSender.sendNEC(CODIGO_DIGITO_1, 32); // <--- AJUSTADO
-      delay(DELAY_ENTRE_DIGITOS);
+      // 3. Envia comando "Seta para Baixo" 
+      Serial.println("Enviando Seta para Baixo (Seu Código)...");
+      IrSender.sendNEC(CODIGO_SETA_BAIXO, 32);
+      delay(DELAY_ENTRE_ACOES_MENU);
 
-      Serial.println("Enviando código para dígito 2...");
-      IrSender.sendNEC(CODIGO_DIGITO_2, 32); // <--- AJUSTADO
+      // 4. Envia comando "OK/Selecionar" 
+      Serial.println("Enviando OK/Selecionar (Seu Código)...");
+      IrSender.sendNEC(CODIGO_OK_SELECIONAR, 32);
+      delay(DELAY_ENTRE_ACOES_MENU);
 
-      Serial.println("Sequência para Canal 12 enviada!");
-      delay(1000); // Evita reenvio acidental imediato
+      // 5. Envia comando "Canal para Cima" 
+      Serial.println("Enviando Canal para Cima (Seu Código)...");
+      IrSender.sendNEC(CODIGO_CANAL_MAIS, 32);
+
+      Serial.println("Sequência de navegação de menu (Seus Códigos) enviada!");
+      delay(1000); // Evita reenvio acidental imediato da sequência completa
     }
   }
 
@@ -72,7 +83,7 @@ void loop() {
   if (digitalRead(BOTAO_VOLUME_MAIS_PIN) == LOW) {
     if ((millis() - ultimoTempoBotaoVolumeMais) > debounceDelay) {
       Serial.println("Botão Volume+ Pressionado");
-      IrSender.sendNEC(CODIGO_VOLUME_MAIS, 32); // <--- AJUSTADO
+      IrSender.sendNEC(CODIGO_VOLUME_MAIS_BTN, 32);
       ultimoTempoBotaoVolumeMais = millis();
       delay(200);
     }
@@ -82,7 +93,7 @@ void loop() {
   if (digitalRead(BOTAO_VOLUME_MENOS_PIN) == LOW) {
     if ((millis() - ultimoTempoBotaoVolumeMenos) > debounceDelay) {
       Serial.println("Botão Volume- Pressionado");
-      IrSender.sendNEC(CODIGO_VOLUME_MENOS, 32); // <--- AJUSTADO
+      IrSender.sendNEC(CODIGO_VOLUME_MENOS_BTN, 32);
       ultimoTempoBotaoVolumeMenos = millis();
       delay(200);
     }
